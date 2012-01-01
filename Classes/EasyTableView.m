@@ -19,25 +19,20 @@
 
 @implementation EasyTableView
 
-@synthesize delegate, cellBackgroundColor;
+@synthesize cellBackgroundColor;
 @synthesize selectedIndexPath = _selectedIndexPath;
 @synthesize orientation = _orientation;
 @synthesize numberOfCells = _numItems;
+@synthesize delegate = _delegate;
 
 #pragma mark -
 #pragma mark Initialization
-
-- (void)dealloc {
-	[cellBackgroundColor release];
-	[_selectedIndexPath release];
-    [super dealloc];
-}
 
 - (id)initWithFrame:(CGRect)frame numberOfColumns:(NSUInteger)numCols ofWidth:(CGFloat)width {
     if (self = [super initWithFrame:frame]) {
 		_numItems			= numCols;
 		_cellWidthOrHeight	= width;
-
+        
 		[self createTableWithOrienation:EasyTableViewOrientationHorizontal];
 	}
     return self;
@@ -67,7 +62,7 @@
 	}
 	else
 		tableView	= [[UITableView alloc] initWithFrame:CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height)];
-
+    
 	tableView.tag				= TABLEVIEW_TAG;
 	tableView.delegate			= self;
 	tableView.dataSource		= self;
@@ -81,7 +76,6 @@
 	tableView.showsHorizontalScrollIndicator = NO;
 	
 	[self addSubview:tableView];
-	[tableView release];
 }
 
 
@@ -106,10 +100,10 @@
 
 - (CGPoint)contentOffset {
 	CGPoint offset = self.tableView.contentOffset;
-
+    
 	if (_orientation == EasyTableViewOrientationHorizontal)
 		offset = CGPointMake(offset.y, offset.x);
-
+    
 	return offset;
 }
 
@@ -150,22 +144,20 @@
 	if (![_selectedIndexPath isEqual:indexPath]) {
 		NSIndexPath *oldIndexPath = [_selectedIndexPath copy];
 		
-		[_selectedIndexPath release];
-		_selectedIndexPath = [indexPath retain];
-		
+        _selectedIndexPath = indexPath;
+        
 		UITableViewCell *deselectedCell	= (UITableViewCell *)[self.tableView cellForRowAtIndexPath:oldIndexPath];
 		UITableViewCell *selectedCell	= (UITableViewCell *)[self.tableView cellForRowAtIndexPath:_selectedIndexPath];
-
-		if ([delegate respondsToSelector:@selector(easyTableView:selectedView:atIndex:deselectedView:)]) {
+        
+		if ([_delegate respondsToSelector:@selector(easyTableView:selectedView:atIndex:deselectedView:)]) {
 			UIView *selectedView = [selectedCell viewWithTag:CELL_CONTENT_TAG];
 			UIView *deselectedView = [deselectedCell viewWithTag:CELL_CONTENT_TAG];
 			
-			[delegate easyTableView:self
-					   selectedView:selectedView
-							atIndex:_selectedIndexPath.row
-					 deselectedView:deselectedView];
+			[_delegate easyTableView:self
+                        selectedView:selectedView
+                             atIndex:_selectedIndexPath.row
+                      deselectedView:deselectedView];
 		}
-		[oldIndexPath release];
 	}
 }
 
@@ -214,11 +206,11 @@
 
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-	if ([delegate respondsToSelector:@selector(easyTableView:scrolledToOffset:)])
-		 [delegate easyTableView:self scrolledToOffset:self.contentOffset];
+	if ([_delegate respondsToSelector:@selector(easyTableView:scrolledToOffset:)])
+        [_delegate easyTableView:self scrolledToOffset:self.contentOffset];
 }
 
-		 
+
 #pragma mark -
 #pragma mark TableViewDataSource
 
@@ -237,7 +229,7 @@
     
     UITableViewCell *cell = [aTableView dequeueReusableCellWithIdentifier:CellIdentifier];
     if (cell == nil) {
-        cell = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier];
 		
 		[self setCell:cell boundsForOrientation:_orientation];
 		
@@ -262,7 +254,7 @@
 		}
 		else 
 			rotatedView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
-
+        
 		// We want to make sure any expanded content is not visible when the cell is deselected
 		rotatedView.clipsToBounds = YES;
 		
@@ -270,10 +262,9 @@
 		[self prepareRotatedView:rotatedView];
 		
 		[cell.contentView addSubview:rotatedView];
-		[rotatedView release];
 	}
 	[self setCell:cell boundsForOrientation:_orientation];
-
+    
 	[self setDataForRotatedView:[cell.contentView viewWithTag:ROTATED_CELL_VIEW_TAG] forIndexPath:indexPath];
     return cell;
 }
@@ -282,8 +273,8 @@
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
 	NSUInteger numOfItems = _numItems;
 	
-	if ([delegate respondsToSelector:@selector(numberOfCellsForEasyTableView:)]) {
-		numOfItems = [delegate numberOfCellsForEasyTableView:self];
+	if ([_delegate respondsToSelector:@selector(numberOfCellsForEasyTableView:)]) {
+		numOfItems = [_delegate numberOfCellsForEasyTableView:self];
 		
 		// Animate any changes in the number of items
 		[tableView beginUpdates];
@@ -297,12 +288,12 @@
 #pragma mark Rotation
 
 - (void)prepareRotatedView:(UIView *)rotatedView {
-	UIView *content = [delegate easyTableView:self viewForRect:rotatedView.bounds];
+	UIView *content = [_delegate easyTableView:self viewForRect:rotatedView.bounds];
 	
 	// Add a default view if none is provided
 	if (content == nil)
-		content = [[[UIView alloc] initWithFrame:rotatedView.bounds] autorelease];
-
+		content = [[UIView alloc] initWithFrame:rotatedView.bounds];
+    
 	content.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
 	content.tag = CELL_CONTENT_TAG;
 	[rotatedView addSubview:content];
@@ -311,7 +302,7 @@
 
 - (void)setDataForRotatedView:(UIView *)rotatedView forIndexPath:(NSIndexPath *)indexPath {
 	UIView *content = [rotatedView viewWithTag:CELL_CONTENT_TAG];
-	[delegate easyTableView:self setDataForView:content forIndex:indexPath.row];
+	[_delegate easyTableView:self setDataForView:content forIndex:indexPath.row];
 }
 
 
